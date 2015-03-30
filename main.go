@@ -32,13 +32,13 @@ func main() {
 
 	spfObject := spf.New(email, ipAddr)
 
-	if spfObject.IsValid() {
-		fmt.Printf("Your SPF record is allowed to send from %s for domain %s\n", spfObject.IPAddress(), spfObject.Domain())
+	if spfObject.IsValid {
+		fmt.Printf("Your SPF record is allowed to send from %s for domain %s\n", spfObject.IPAddress, spfObject.Domain)
 	} else {
 		if spfObject.AllRecord() == "SoftFail" || spfObject.AllRecord() == "None" {
-			fmt.Printf("The IP (%s) was not found as a valid sender for your SPF record, but your \"ALL\" record is %s, so sending would be permitted\n", spfObject.IPAddress(), spfObject.AllRecord())
+			fmt.Printf("The IP (%s) was not found as a valid sender for your SPF record, but your \"ALL\" record is %s, so sending would be permitted\n", spfObject.IPAddress, spfObject.AllRecord())
 		} else {
-			fmt.Printf("The IP (%s) was not found as a valid sender for your SPF record, and your \"ALL\" record is %s, so sending would NOT be permitted\n", spfObject.IPAddress(), spfObject.AllRecord())
+			fmt.Printf("The IP (%s) was not found as a valid sender for your SPF record, and your \"ALL\" record is %s, so sending would NOT be permitted\n", spfObject.IPAddress, spfObject.AllRecord())
 		}
 	}
 }

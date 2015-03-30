@@ -7,40 +7,43 @@ import (
 	"net"
 	"strings"
 )
-
+// SPF wraps all of our information into a nice little struct
 type SPF struct {
-	validIPRanges   []string
-	domain          string
-	emailAddress    string
-	sourceIPAddress string
-	isFound         bool
-	foundCIDR       string
-	allRecord       string
+	ValidIPRanges []string //Contains a list of valid CIDR ranges, as defined in the SPF record
+	Domain        string   //The domain we're checking SPF for
+	EmailAddress  string   //The email address we're pretending to send as
+	IPAddress     string   //The IP address we're pretending to send from
+	IsValid       bool     //Will be true if IPAddress is found in ValidIPRanges
+	FoundCIDR     string   //The actual CIDR range our IP is found in
+	allRecord     string
 }
 
+// New returns an SPF struct, given an email address and a source IP.
 func New(emailAddress string, sourceIPAddress string) *SPF {
-	spfObject := SPF{
-		emailAddress:    emailAddress,
-		sourceIPAddress: sourceIPAddress,
+	spfObject := spf{
+		EmailAddress: emailAddress,
+		IPAddress:    sourceIPAddress,
 	}
 	spfObject.Process()
 	return &spfObject
 }
 
+// Process is where all the magic happens. It is called when we create a new SPF object.
+// It can also be called again if you change the email address or source IP address.
 func (spf *SPF) Process() {
-	if spf.emailAddress == "" {
+	if spf.EmailAddress == "" {
 		log.Fatal("Email Address is not defined")
 	}
-	if spf.sourceIPAddress == "" {
+	if spf.IPAddress == "" {
 		log.Fatal("Source IP Address is not defined")
 	}
 	var err error
-	spf.domain, err = processEmail(spf.emailAddress)
+	spf.Domain, err = processEmail(spf.EmailAddress)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	txtRecords, err := net.LookupTXT(spf.domain)
+	txtRecords, err := net.LookupTXT(spf.Domain)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,11 +60,11 @@ func (spf *SPF) Process() {
 	allRecord = allRecordSplit[0]
 	spf.allRecord = allRecord
 
-	ips, err := getIPsForRecord(spf.domain, spfRecord)
+	ips, err := getIPsForRecord(spf.Domain, spfRecord)
 	if err != nil {
 		log.Fatal(err)
 	}
-	spf.validIPRanges = ips
+	spf.ValidIPRanges = ips
 
 	for _, element := range ips {
 		elementWithCidr := element
@@ -76,26 +79,15 @@ func (spf *SPF) Process() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		ipAddress := net.ParseIP(spf.sourceIPAddress)
+		ipAddress := net.ParseIP(spf.IPAddress)
 		if cidrnet.Contains(ipAddress) {
-			spf.isFound = true
-			spf.foundCIDR = cidrnet.String()
+			spf.IsValid = true
+			spf.FoundCIDR = cidrnet.String()
 		}
 	}
 }
 
-func (spf *SPF) IsValid() bool {
-	return spf.isFound
-}
-
-func (spf *SPF) IPAddress() string {
-	return spf.sourceIPAddress
-}
-
-func (spf *SPF) Domain() string {
-	return spf.domain
-}
-
+// AllRecord returns a string containing "SoftFail", "Fail", or "None".
 func (spf *SPF) AllRecord() string {
 	allRecord := spf.allRecord
 	if allRecord == "~" {
@@ -107,15 +99,17 @@ func (spf *SPF) AllRecord() string {
 	}
 }
 
+//Splits an email address into "username" and "domain" parts. It gives back the domain name.
 func processEmail(email string) (string, error) {
-	split_email := strings.Split(email, "@")
-	if len(split_email) != 2 {
+	splitEmail := strings.Split(email, "@")
+	if len(splitEmail) != 2 {
 		return "", errors.New("Email address either has not enough or too many @ symbols")
 	}
-	domain := split_email[1]
+	domain := splitEmail[1]
 	return domain, nil
 }
 
+//Locates the SPF record in the txt records, and returns the record as long as there aren't too many.
 func findSPFRecord(txtRecords []string) ([]string, error) {
 	var spfRecords []string
 	for _, record := range txtRecords {
