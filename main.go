@@ -1,12 +1,10 @@
 package main
 
 import (
-	"errors"
 	"flag"
-	"fmt"
 	"log"
-	"net"
-	"strings"
+	"fmt"
+	"github.com/daniellockard/gospfquery/spf"
 )
 
 type found struct {
@@ -32,160 +30,15 @@ func main() {
 		log.Fatal("Email not defined")
 	}
 
-	domain, err := processEmail(email)
-	if err != nil {
-		log.Fatal(err)
-	}
+	spfObject := spf.New(email,ipAddr)
 
-	txtRecords, err := net.LookupTXT(domain)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	spfRecordList, err := findSPFRecord(txtRecords)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	spfRecord := spfRecordList[0]
-	splitSPFRecord := strings.Split(spfRecord, " ")
-	allRecord := splitSPFRecord[len(splitSPFRecord)-1]
-	allRecordSplit := strings.Split(allRecord, "a")
-	allRecord = allRecordSplit[0]
-
-	ips, err := getIPsForRecord(domain, spfRecord)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	foundRecord := found{isFound: false, cidr: "", allRecord: allRecord}
-	for _, element := range ips {
-		elementWithCidr := element
-		if !strings.Contains(elementWithCidr, "/") {
-			if !strings.Contains(elementWithCidr, ":") {
-				elementWithCidr = fmt.Sprintf("%s/32", elementWithCidr)
-			} else {
-				elementWithCidr = fmt.Sprintf("%s/128", elementWithCidr)
-			}
-		}
-		_, cidrnet, err := net.ParseCIDR(elementWithCidr)
-		if err != nil {
-			log.Fatal(err)
-		}
-		ipAddress := net.ParseIP(ipAddr)
-		if cidrnet.Contains(ipAddress) {
-			foundRecord.isFound = true
-			foundRecord.cidr = cidrnet.String()
-		}
-	}
-	if foundRecord.isFound {
-		fmt.Printf("IP Sent from is in %s.  This email will be allowed to send.\n", foundRecord.cidr)
+	if spfObject.IsValid() {
+		fmt.Printf("Your SPF record is allowed to send from %s for domain %s\n", spfObject.IPAddress(), spfObject.Domain())
 	} else {
-		switch allRecord {
-		case "-":
-			fmt.Printf("IP Sent from is NOT found. This email would NOT be allowed as your \"ALL\" authorization is set to \"-all\"\n")
-		case "~":
-			fmt.Printf("IP Sent from is NOT found. This email would be allowed, but would be a \"SoftFail\" as your authorization is set to \"~all\"\n")
-		}
-	}
-
-}
-
-func processEmail(email string) (string, error) {
-	split_email := strings.Split(email, "@")
-	if len(split_email) != 2 {
-		return "", errors.New("Email address either has not enough or too many @ symbols")
-	}
-	domain := split_email[1]
-	return domain, nil
-}
-
-func findSPFRecord(txtRecords []string) ([]string, error) {
-	var spfRecords []string
-	for _, record := range txtRecords {
-		if strings.HasPrefix(record, "v=spf1") {
-			spfRecords = append(spfRecords, record)
-		}
-	}
-	if len(spfRecords) == 0 || len(spfRecords) > 1 {
-		return []string{}, errors.New("Too many SPF records found")
-	}
-	return spfRecords, nil
-}
-
-func getIPsForRecord(domain string, record string) ([]string, error) {
-	var spfSections []string
-	var cidrIPs []string
-	splitTextRecords := strings.Split(record, " ")
-	for _, element := range splitTextRecords {
-		spfSections = append(spfSections, element)
-	}
-	for _, element := range spfSections {
-		if strings.HasPrefix("v=spf1", element) {
-			continue
-		} else if strings.HasPrefix(element, "ip4") {
-			cidr := strings.Replace(element, "ip4:", "", -1)
-			cidrIPs = append(cidrIPs, cidr)
-			continue
-		} else if strings.HasPrefix(element, "include") {
-			record := strings.Replace(element, "include:", "", -1)
-			txtRecords, err := net.LookupTXT(record)
-			if err != nil {
-				return []string{}, err
-			}
-			spfRecordList, err := findSPFRecord(txtRecords)
-			if err != nil {
-				return []string{}, err
-			}
-			spfRecord := spfRecordList[0]
-			recursiveList, err := getIPsForRecord(record, spfRecord)
-			for _, element := range recursiveList {
-				cidrIPs = append(cidrIPs, element)
-			}
-			continue
-		} else if strings.ToLower(element) == "a" || strings.ToLower(element) == "mx" {
-			otherRecord, err := parseOtherRecord(domain, element)
-			if err != nil {
-				return []string{}, err
-			}
-			for _, element := range otherRecord {
-				cidrIPs = append(cidrIPs, element)
-			}
-			continue
+		if spfObject.AllRecord() == "SoftFail" || spfObject.AllRecord() == "None" {
+			fmt.Printf("The IP (%s) was not found as a valid sender for your SPF record, but your \"ALL\" record is %s, so sending would be permitted\n", spfObject.IPAddress(), spfObject.AllRecord())
 		} else {
-			continue
+			fmt.Printf("The IP (%s) was not found as a valid sender for your SPF record, and your \"ALL\" record is %s, so sending would NOT be permitted\n", spfObject.IPAddress(), spfObject.AllRecord())
 		}
 	}
-	return cidrIPs, nil
-}
-
-func parseOtherRecord(domain string, record string) ([]string, error) {
-	var ipList []string
-	if record == "a" {
-		ip, err := net.LookupIP(domain)
-		if err != nil {
-			return []string{}, err
-		}
-		for _, element := range ip {
-			ipList = append(ipList, element.String())
-		}
-		return ipList, nil
-	} else if record == "mx" {
-		ip, err := net.LookupMX(domain)
-		if err != nil {
-			return []string{}, err
-		}
-		for _, element := range ip {
-			MXARecords, err := parseOtherRecord(element.Host, "a")
-			if err != nil {
-				return []string{}, err
-			}
-			for _, listElement := range MXARecords {
-				ipList = append(ipList, listElement)
-			}
-
-		}
-		return ipList, nil
-	}
-	return []string{}, errors.New("Unknown Record for SPF")
 }
