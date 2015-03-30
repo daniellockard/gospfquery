@@ -104,7 +104,7 @@ func findSPFRecord(txtRecords []string) ([]string, error) {
 	var spfRecords []string
 	for _, record := range txtRecords {
 		if strings.HasPrefix(record, "v=spf1") {
-			spfRecords = append(spfRecords,record)
+			spfRecords = append(spfRecords, record)
 		}
 	}
 	if len(spfRecords) == 0 || len(spfRecords) > 1 {
@@ -148,7 +148,7 @@ func getIPsForRecord(domain string, record string) ([]string, error) {
 			if err != nil {
 				return []string{}, err
 			}
-			for _,element := range otherRecord {
+			for _, element := range otherRecord {
 				cidrIPs = append(cidrIPs, element)
 			}
 			continue
@@ -180,8 +180,8 @@ func parseOtherRecord(domain string, record string) ([]string, error) {
 			if err != nil {
 				return []string{}, err
 			}
-			for _,listElement := range MXARecords {
-				ipList = append(ipList,listElement)
+			for _, listElement := range MXARecords {
+				ipList = append(ipList, listElement)
 			}
 
 		}
