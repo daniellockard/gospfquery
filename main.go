@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
-	"log"
 	"fmt"
 	"github.com/daniellockard/gospfquery/spf"
+	"log"
 )
 
 type found struct {
@@ -30,7 +30,7 @@ func main() {
 		log.Fatal("Email not defined")
 	}
 
-	spfObject := spf.New(email,ipAddr)
+	spfObject := spf.New(email, ipAddr)
 
 	if spfObject.IsValid() {
 		fmt.Printf("Your SPF record is allowed to send from %s for domain %s\n", spfObject.IPAddress(), spfObject.Domain())

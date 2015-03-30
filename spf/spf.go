@@ -1,26 +1,26 @@
 package spf
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"net"
 	"strings"
-	"fmt"
-	"errors"
 )
 
 type SPF struct {
-	validIPRanges []string
-	domain string
-	emailAddress string
+	validIPRanges   []string
+	domain          string
+	emailAddress    string
 	sourceIPAddress string
-	isFound bool
-	foundCIDR string
-	allRecord string
+	isFound         bool
+	foundCIDR       string
+	allRecord       string
 }
 
 func New(emailAddress string, sourceIPAddress string) *SPF {
 	spfObject := SPF{
-		emailAddress: emailAddress,
+		emailAddress:    emailAddress,
 		sourceIPAddress: sourceIPAddress,
 	}
 	spfObject.Process()
@@ -205,5 +205,3 @@ func parseOtherRecord(domain string, record string) ([]string, error) {
 	}
 	return []string{}, errors.New("Unknown Record for SPF")
 }
-
-
