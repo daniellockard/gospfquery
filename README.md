@@ -3,11 +3,11 @@ This is a VERY rough version of a Go SPF validator. It's invoked like this:
 
 ```bash
 danny@MacBook-Pro ~ » gospfquery -id="danny@banno.com" -ip-address="147.202.96.4"
-IP Sent from is in 147.202.96.0/24.  This email will be allowed to send.
+Your SPF record is allowed to send from 147.202.96.4 for domain banno.com
 danny@MacBook-Pro ~ » gospfquery -id="danny@banno.com" -ip-address="147.202.97.4"
-IP Sent from is NOT found. This email would be allowed, but would be a "SoftFail" as your authorization is set to "~all"
+The IP (147.202.97.4) was not found as a valid sender for your SPF record, but your "ALL" record is SoftFail, so sending would be permitted
 danny@MacBook-Pro ~ » gospfquery -id="danny@amazon.com" -ip-address="147.202.97.4"
-IP Sent from is NOT found. This email would NOT be allowed as your "ALL" authorization is set to "-all"
+The IP (147.202.97.4) was not found as a valid sender for your SPF record, and your "ALL" record is Fail, so sending would NOT be permitted
 ```
 
 This does not implement REDIRECT, PTR, or EXISTS. The checking for the "ALL" record is very rough.
