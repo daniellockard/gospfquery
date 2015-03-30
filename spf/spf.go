@@ -20,7 +20,7 @@ type SPF struct {
 
 // New returns an SPF struct, given an email address and a source IP.
 func New(emailAddress string, sourceIPAddress string) *SPF {
-	spfObject := spf{
+	spfObject := SPF{
 		EmailAddress: emailAddress,
 		IPAddress:    sourceIPAddress,
 	}
