@@ -1,7 +1,6 @@
 package main
 
 import (
-	"container/list"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,7 +16,6 @@ type found struct {
 }
 
 func main() {
-
 	var ipAddr string
 	var email string
 	flag.StringVar(&ipAddr, "ip-address", "", "The IP to check")
@@ -49,13 +47,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	spfRecord := spfRecordList.Front()
-	splitSPFRecord := strings.Split(spfRecord.Value.(string), " ")
+	spfRecord := spfRecordList[0]
+	splitSPFRecord := strings.Split(spfRecord, " ")
 	allRecord := splitSPFRecord[len(splitSPFRecord)-1]
 	allRecordSplit := strings.Split(allRecord, "a")
 	allRecord = allRecordSplit[0]
 
-	ips, err := getIPsForRecord(domain, spfRecord.Value.(string))
+	ips, err := getIPsForRecord(domain, spfRecord)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -102,15 +100,15 @@ func processEmail(email string) (string, error) {
 	return domain, nil
 }
 
-func findSPFRecord(txtRecords []string) (*list.List, error) {
-	spfRecords := list.New()
+func findSPFRecord(txtRecords []string) ([]string, error) {
+	var spfRecords []string
 	for _, record := range txtRecords {
 		if strings.HasPrefix(record, "v=spf1") {
-			spfRecords.PushBack(record)
+			spfRecords = append(spfRecords,record)
 		}
 	}
-	if spfRecords.Len() == 0 || spfRecords.Len() > 1 {
-		return list.New(), errors.New("Too many SPF records found")
+	if len(spfRecords) == 0 || len(spfRecords) > 1 {
+		return []string{}, errors.New("Too many SPF records found")
 	}
 	return spfRecords, nil
 }
@@ -139,8 +137,8 @@ func getIPsForRecord(domain string, record string) ([]string, error) {
 			if err != nil {
 				return []string{}, err
 			}
-			spfRecord := spfRecordList.Front()
-			recursiveList, err := getIPsForRecord(record, spfRecord.Value.(string))
+			spfRecord := spfRecordList[0]
+			recursiveList, err := getIPsForRecord(record, spfRecord)
 			for _, element := range recursiveList {
 				cidrIPs = append(cidrIPs, element)
 			}
